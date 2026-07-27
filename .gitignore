@@ -5,3 +5,10 @@ __pycache__/
 logs/*.log
 data/*.csv
 data/*.json
+.env
+logs/
+data/historical_prices.csv
+data/backtest_chart.png
+venv/
+__pycache__/
+*.pyc

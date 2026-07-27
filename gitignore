@@ -1,7 +1,0 @@
-.env
-logs/
-data/historical_prices.csv
-data/backtest_chart.png
-venv/
-__pycache__/
-*.pyc
