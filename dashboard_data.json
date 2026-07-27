@@ -1,0 +1,25 @@
+{
+  "last_updated": "2026-07-25T13:29:38.650313",
+  "status": "running",
+  "account": {
+    "total_equity": 10000.0,
+    "cash": 10000,
+    "start_value": 10000,
+    "total_return_pct": 0.0
+  },
+  "current_holdings": [],
+  "momentums": {
+    "SPY": 0.67,
+    "XLK": -2.51,
+    "XLI": 0.96,
+    "XLF": 3.93
+  },
+  "top_ranked": [
+    "XLF",
+    "XLI"
+  ],
+  "last_action": "skipped_market_closed",
+  "last_action_detail": "Market is closed. Will retry on next scheduled check.",
+  "market_open": false,
+  "last_checked": "2026-07-27T11:51:38.204948"
+}

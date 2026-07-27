@@ -1,0 +1,43 @@
+name: Bot Heartbeat
+
+# Runs on a schedule and can also be triggered manually from the Actions tab.
+# Since REBALANCE_FREQ_DAYS is 20, there's no need to check every hour --
+# once per weekday morning (comfortably inside US market hours) is plenty.
+# The bot's own is_market_open() check safely no-ops on holidays.
+on:
+  schedule:
+    - cron: '35 14 * * 1-5'   # 14:35 UTC = 9:35am ET, Mon-Fri
+  workflow_dispatch: {}        # adds a "Run workflow" button for manual testing
+
+# Required so the workflow's token can push the updated state files back.
+permissions:
+  contents: write
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run bot
+        run: python bot.py
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+
+      - name: Commit updated state
+        run: |
+          git config user.name "sector-rotation-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/state.json dashboard_data.json data/bot_data.json
+          git diff --staged --quiet || git commit -m "Bot run: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
