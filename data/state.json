@@ -1,5 +1,7 @@
 {
-  "last_rebalance": null,
-  "holdings": {},
-  "updated_at": "2026-07-27T23:57:45.376656"
+  "last_rebalance": "2026-07-28T16:20:04.505301",
+  "holdings": {
+    "XLF": 87.0019
+  },
+  "updated_at": "2026-07-28T16:20:04.632745"
 }
