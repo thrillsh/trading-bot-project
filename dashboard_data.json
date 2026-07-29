@@ -28,10 +28,10 @@
     "XLF",
     "ETH"
   ],
-  "last_action": "no_action_needed",
-  "last_action_detail": "Within holding period \u2014 next rebalance in 20 day(s).",
+  "last_action": "skipped_market_closed",
+  "last_action_detail": "Market is closed. Will retry on next scheduled check.",
   "market_open": false,
-  "last_checked": "2026-07-29T02:31:26.556833",
+  "last_checked": "2026-07-29T02:53:23.640128",
   "scores": {
     "SPY": -0.645,
     "XLK": -4.344,
@@ -64,6 +64,10 @@
     },
     {
       "t": "2026-07-29T02:31:26.767990",
+      "equity": 101324.4
+    },
+    {
+      "t": "2026-07-29T02:53:23.890223",
       "equity": 101324.4
     }
   ]
