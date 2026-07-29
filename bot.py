@@ -112,6 +112,19 @@ class AlpacaTrader:
             logger.error(f"get_position({symbol}) failed unexpectedly: {e}")
             raise
 
+    def get_position_detail(self, symbol):
+        """(qty, market_value) straight from Alpaca -- used for dashboard
+        refreshes that shouldn't wait on our own CSV/momentum pipeline."""
+        try:
+            pos = self.api.get_position(symbol)
+            return float(pos.qty), float(pos.market_value)
+        except Exception as e:
+            msg = str(e).lower()
+            if 'position does not exist' in msg or '404' in msg:
+                return 0.0, 0.0
+            logger.error(f"get_position_detail({symbol}) failed unexpectedly: {e}")
+            raise
+
     def get_cash(self):
         return float(self.api.get_account().cash)
 
@@ -168,6 +181,37 @@ class LiveRotationBot:
                 logger.warning(f"Found existing position: {name} = {qty}")
         return holdings
 
+    def _refresh_dashboard_from_alpaca(self):
+        """Write an immediate dashboard update using live Alpaca data directly,
+        not our own CSV/momentum pipeline. Used right after reconciling
+        holdings so the dashboard never shows stale/wrong numbers between now
+        and whenever the next real rebalance happens -- which could be weeks
+        away if nothing else changes in the meantime."""
+        equity = self.trader.get_equity()
+        cash = self.trader.get_cash()
+        if equity is None:
+            return
+
+        holdings_list = []
+        for name, qty in self.holdings.items():
+            cfg = self.assets[name]
+            _, mkt_value = self.trader.get_position_detail(cfg['symbol'])
+            holdings_list.append({
+                'asset': name, 'qty': round(qty, 4), 'value': round(mkt_value, 2),
+                'pct': round(mkt_value / equity * 100, 1) if equity > 0 else 0
+            })
+
+        self._write_dashboard({
+            'last_updated': datetime.now().isoformat(),
+            'account': {
+                'total_equity': round(equity, 2),
+                'cash': round(cash, 2),
+                'start_value': STARTING_CAPITAL,
+                'total_return_pct': round((equity / STARTING_CAPITAL - 1) * 100, 2)
+            },
+            'current_holdings': holdings_list,
+        })
+
     def load_state(self):
         try:
             with open('data/state.json', 'r') as f:
@@ -185,12 +229,14 @@ class LiveRotationBot:
             self.last_rebalance = None
             self.holdings = self._reconcile_holdings_from_alpaca()
             self.save_state()
+            self._refresh_dashboard_from_alpaca()
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             # state.json exists but is corrupted/unreadable — same risk, same fix.
             logger.error(f"data/state.json is corrupted ({e}). Reconciling holdings from Alpaca directly.")
             self.last_rebalance = None
             self.holdings = self._reconcile_holdings_from_alpaca()
             self.save_state()
+            self._refresh_dashboard_from_alpaca()
 
     def save_state(self):
         state = {

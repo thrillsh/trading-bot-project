@@ -1,176 +1,324 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Bot Dashboard</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #0f172a;
-            color: #e2e8f0;
-            min-height: 100vh;
-        }
-        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid #1e293b; }
-        h1 { font-size: 28px; font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; }
-        .status-running { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-        .status-paused { background: rgba(234, 179, 8, 0.15); color: #eab308; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
-        .status-dot-paused { width: 8px; height: 8px; border-radius: 50%; background: #eab308; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 32px; }
-        .card { background: #1e293b; border-radius: 16px; padding: 24px; border: 1px solid #334155; }
-        .card-header { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 12px; }
-        .card-value { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
-        .card-change { font-size: 14px; font-weight: 600; }
-        .positive { color: #22c55e; } .negative { color: #ef4444; } .neutral { color: #94a3b8; }
-        .holdings-table { width: 100%; border-collapse: collapse; }
-        .holdings-table th { text-align: left; padding: 12px 16px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; border-bottom: 1px solid #334155; }
-        .holdings-table td { padding: 16px; border-bottom: 1px solid #1e293b; }
-        .asset-icon { display: inline-flex; align-items: center; gap: 12px; }
-        .asset-badge { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
-        .spy { background: rgba(0, 168, 107, 0.15); color: #00a86b; }
-        .xlk { background: rgba(255, 107, 53, 0.15); color: #ff6b35; }
-        .xli { background: rgba(78, 205, 196, 0.15); color: #4ecdc4; }
-        .xlf { background: rgba(196, 69, 105, 0.15); color: #c44569; }
-        .progress-bar { width: 100%; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
-        .last-updated { text-align: center; color: #64748b; font-size: 13px; margin-top: 32px; }
-        .empty-state { text-align: center; color: #94a3b8; padding: 24px; }
-        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } h1 { font-size: 22px; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sector Rotation Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D0B08;
+    --panel: #17140F;
+    --border: #2E2818;
+    --amber: #D4A73C;
+    --amber-bright: #F0C05A;
+    --amber-dim: rgba(212, 167, 60, 0.12);
+    --teal: #4A9A93;
+    --teal-dim: rgba(74, 154, 147, 0.12);
+    --green: #3FBF6B;
+    --red: #E5534B;
+    --text: #EDE6D6;
+    --text-dim: #9C9484;
+    --text-faint: #665F52;
+    --mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212,167,60,0.06), transparent);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .container { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: linear-gradient(145deg, var(--amber-bright), var(--amber));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 700; color: var(--bg); font-size: 15px;
+  }
+  h1 { font-size: 19px; font-weight: 600; letter-spacing: 0.01em; }
+  h1 span { color: var(--text-dim); font-weight: 400; }
+  .pills { display: flex; gap: 8px; align-items: center; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    font-family: var(--mono); border: 1px solid transparent;
+  }
+  .pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill-green { background: rgba(63,191,107,0.1); color: var(--green); border-color: rgba(63,191,107,0.25); }
+  .pill-green .pill-dot { background: var(--green); animation: pulse 2s infinite; }
+  .pill-amber { background: var(--amber-dim); color: var(--amber-bright); border-color: rgba(212,167,60,0.25); }
+  .pill-amber .pill-dot { background: var(--amber); }
+  .pill-muted { background: rgba(156,148,132,0.08); color: var(--text-dim); border-color: var(--border); }
+  .pill-muted .pill-dot { background: var(--text-faint); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 10px; }
+
+  #activity-card { border-left: 3px solid var(--amber); display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+  #last-action { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  #last-action-detail { font-size: 13px; color: var(--text-dim); }
+  #last-checked-time { font-family: var(--mono); font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .kpi-value { font-family: var(--mono); font-size: 28px; font-weight: 700; margin-bottom: 6px; line-height: 1; }
+  .kpi-sub { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+  .positive { color: var(--green); } .negative { color: var(--red); } .neutral { color: var(--text-dim); }
+  #sparkline-wrap { margin-top: 10px; height: 36px; }
+
+  .lb-row { display: grid; grid-template-columns: 70px 1fr 90px 78px; align-items: center; gap: 12px; padding: 9px 0; }
+  .lb-row + .lb-row { border-top: 1px solid var(--border); }
+  .lb-asset { font-family: var(--mono); font-weight: 700; font-size: 13px; }
+  .lb-track { position: relative; height: 8px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
+  .lb-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .lb-fill-held { background: linear-gradient(90deg, var(--amber), var(--amber-bright)); }
+  .lb-fill-unheld { background: var(--teal); opacity: 0.55; }
+  .lb-fill-neg { background: var(--red); opacity: 0.4; }
+  .lb-mom { font-family: var(--mono); font-size: 12.5px; text-align: right; }
+  .lb-status { font-family: var(--mono); font-size: 11px; text-align: right; font-weight: 700; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); border-bottom: 1px solid var(--border); font-weight: 600; }
+  td { padding: 13px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  td.mono { font-family: var(--mono); }
+  .asset-chip { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 26px; border-radius: 6px; font-family: var(--mono); font-weight: 700; font-size: 10.5px; background: var(--teal-dim); color: var(--teal); }
+  .asset-chip.crypto { background: var(--amber-dim); color: var(--amber-bright); }
+  .alloc-bar-wrap { display: flex; align-items: center; gap: 10px; }
+  .alloc-track { flex: 1; height: 5px; background: rgba(255,255,255,0.04); border-radius: 3px; overflow: hidden; }
+  .alloc-fill { height: 100%; background: var(--amber); border-radius: 3px; }
+  .empty-state { text-align: center; color: var(--text-faint); padding: 22px; font-size: 13px; }
+
+  footer { text-align: center; color: var(--text-faint); font-size: 12px; font-family: var(--mono); margin-top: 24px; }
+  @media (max-width: 720px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .lb-row { grid-template-columns: 55px 1fr 70px 0; }
+    .lb-status { display: none; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📈 Sector Rotation Bot</h1>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <div class="status-badge" id="market-badge" style="background: rgba(148,163,184,0.15); color:#94a3b8;">
-                    <span id="market-status">Market: --</span>
-                </div>
-                <div class="status-badge status-running" id="status-badge">
-                    <span class="status-dot" id="status-dot"></span>
-                    <span id="bot-status">Loading...</span>
-                </div>
-            </div>
-        </header>
-        <div class="card" id="activity-card" style="margin-bottom: 20px; border-left: 3px solid #38bdf8;">
-            <div class="card-header">Bot Activity</div>
-            <div style="font-size: 15px; font-weight: 600; margin-bottom: 4px;" id="last-action">--</div>
-            <div style="font-size: 13px; color: #94a3b8;" id="last-action-detail">--</div>
-            <div style="font-size: 12px; color: #64748b; margin-top: 10px;">Last checked: <span id="last-checked-time">--</span></div>
-        </div>
-        <div class="grid">
-            <div class="card"><div class="card-header">Total Portfolio Value</div><div class="card-value" id="total-equity">$--</div><div class="card-change" id="total-return">--</div></div>
-            <div class="card"><div class="card-header">Cash Available</div><div class="card-value neutral" id="cash">$--</div><div class="card-change neutral">--</div></div>
-            <div class="card"><div class="card-header">vs Starting Capital</div><div class="card-value" id="outperformance">--</div><div class="card-change" id="outperf-label">--</div></div>
-            <div class="card"><div class="card-header">Last Rebalance</div><div class="card-value neutral" id="last-rebal">--</div><div class="card-change neutral" id="next-rebal">--</div></div>
-        </div>
-        <div class="card" style="margin-bottom: 20px;">
-            <div class="card-header">Current Holdings</div>
-            <table class="holdings-table"><thead><tr><th>Asset</th><th>Quantity</th><th>Value</th><th>Allocation</th></tr></thead>
-            <tbody id="holdings-body"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
-            </table>
-        </div>
-        <div class="card" style="margin-bottom: 20px;">
-            <div class="card-header">Momentum Rankings</div>
-            <table class="holdings-table"><thead><tr><th>Asset</th><th>Momentum</th><th>Status</th></tr></thead>
-            <tbody id="momentum-body"><tr><td colspan="3" class="empty-state">Loading...</td></tr></tbody>
-            </table>
-        </div>
-        <div class="last-updated">Last updated: <span id="last-updated-time">--</span></div>
+<div class="container">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">SR</div>
+      <h1>Sector Rotation <span>&middot; live dashboard</span></h1>
     </div>
-    <script>
-        const assetColors = {"SPY":"#00a86b","XLK":"#ff6b35","XLI":"#4ecdc4","XLF":"#c44569"};
-        const actionLabels = {
-            'rebalanced': { label: '✅ Rebalanced', color: '#22c55e' },
-            'no_changes_needed': { label: '✅ Checked — no changes needed', color: '#22c55e' },
-            'no_action_needed': { label: '💤 Within holding period', color: '#94a3b8' },
-            'skipped_market_closed': { label: '🌙 Skipped — market closed', color: '#eab308' },
-            'no_cash_available': { label: '⚠️ No cash available', color: '#eab308' },
-            'buys_failed': { label: '❌ Buy orders failed', color: '#ef4444' },
-            'aborted_bad_data': { label: '❌ Aborted — bad price data', color: '#ef4444' },
-            'aborted_data_quality': { label: '❌ Aborted — data quality check failed', color: '#ef4444' },
-            'aborted_insufficient_data': { label: '❌ Aborted — not enough history', color: '#ef4444' },
-        };
-        function formatCurrency(val) { return "$" + val.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
-        function renderDashboard(data) {
-            const isRunning = data.status === "running";
-            const badge = document.getElementById("status-badge");
-            const dot = document.getElementById("status-dot");
-            document.getElementById("bot-status").textContent = isRunning ? "Running" : "Paused";
-            if (!isRunning) { badge.className = "status-badge status-paused"; dot.className = "status-dot-paused"; }
+    <div class="pills">
+      <div class="pill pill-muted" id="market-pill"><span class="pill-dot"></span><span id="market-status">--</span></div>
+      <div class="pill pill-green" id="status-pill"><span class="pill-dot"></span><span id="bot-status">Loading&hellip;</span></div>
+    </div>
+  </header>
 
-            if (typeof data.market_open === "boolean") {
-                const marketBadge = document.getElementById("market-badge");
-                document.getElementById("market-status").textContent = data.market_open ? "🟢 Market Open" : "🌙 Market Closed";
-                marketBadge.style.background = data.market_open ? "rgba(34,197,94,0.15)" : "rgba(148,163,184,0.15)";
-                marketBadge.style.color = data.market_open ? "#22c55e" : "#94a3b8";
-            }
+  <div class="card" id="activity-card">
+    <div>
+      <div id="last-action">--</div>
+      <div id="last-action-detail">--</div>
+    </div>
+    <div id="last-checked-time">--</div>
+  </div>
 
-            const action = actionLabels[data.last_action] || { label: data.last_action || "No activity recorded yet", color: "#94a3b8" };
-            const actionEl = document.getElementById("last-action");
-            actionEl.textContent = action.label;
-            actionEl.style.color = action.color;
-            document.getElementById("last-action-detail").textContent = data.last_action_detail || "";
-            document.getElementById("last-checked-time").textContent = data.last_checked ? new Date(data.last_checked).toLocaleString() : "--";
+  <div class="kpi-grid">
+    <div class="card">
+      <div class="card-label">Total Portfolio Value</div>
+      <div class="kpi-value" id="total-equity">$--</div>
+      <div class="kpi-sub" id="total-return">--</div>
+      <div id="sparkline-wrap"><svg id="sparkline" width="100%" height="36" viewBox="0 0 300 36" preserveAspectRatio="none"></svg></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Cash Available</div>
+      <div class="kpi-value neutral" id="cash">$--</div>
+      <div class="kpi-sub neutral">uninvested</div>
+    </div>
+    <div class="card">
+      <div class="card-label">vs Starting Capital</div>
+      <div class="kpi-value" id="outperformance">--</div>
+      <div class="kpi-sub" id="outperf-label">--</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Last Rebalance</div>
+      <div class="kpi-value neutral" id="last-rebal" style="font-size:20px;">--</div>
+      <div class="kpi-sub neutral" id="next-rebal">--</div>
+    </div>
+  </div>
 
-            const acct = data.account;
-            if (acct) {
-                document.getElementById("total-equity").textContent = formatCurrency(acct.total_equity);
-                document.getElementById("cash").textContent = formatCurrency(acct.cash);
-                const ret = acct.total_return_pct;
-                const retEl = document.getElementById("total-return");
-                retEl.textContent = (ret >= 0 ? "+" : "") + ret.toFixed(2) + "% all time";
-                retEl.className = "card-change " + (ret >= 0 ? "positive" : "negative");
-                document.getElementById("outperformance").textContent = (ret >= 0 ? "+" : "") + ret.toFixed(2) + "%";
-                document.getElementById("outperf-label").textContent = ret >= 0 ? "Outperforming start" : "Underperforming start";
-                document.getElementById("outperf-label").className = "card-change " + (ret >= 0 ? "positive" : "negative");
-            } else {
-                document.getElementById("total-equity").textContent = "No rebalance yet";
-                document.getElementById("outperformance").textContent = "--";
-            }
-            if (data.last_updated) {
-                const lastUp = new Date(data.last_updated);
-                document.getElementById("last-updated-time").textContent = lastUp.toLocaleString();
-                document.getElementById("last-rebal").textContent = lastUp.toLocaleDateString();
-            }
-            document.getElementById("next-rebal").textContent = "Check scheduler for next date";
-            const tbody = document.getElementById("holdings-body");
-            if (data.current_holdings && data.current_holdings.length > 0) {
-                tbody.innerHTML = data.current_holdings.map(h => {
-                    return `<tr><td><div class="asset-icon"><div class="asset-badge ${h.asset.toLowerCase()}">${h.asset}</div><span style="font-weight:600">${h.asset}</span></div></td><td>${h.qty.toFixed(4)}</td><td style="font-weight:600">${formatCurrency(h.value)}</td><td><div style="display:flex;align-items:center;gap:12px"><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${h.pct}%;background:${assetColors[h.asset] || "#38bdf8"}"></div></div><span style="font-size:13px;font-weight:600;min-width:40px">${h.pct.toFixed(1)}%</span></div></td></tr>`;
-                }).join("");
-            } else { tbody.innerHTML = "<tr><td colspan=4 class=empty-state>No holdings</td></tr>"; }
-            const momBody = document.getElementById("momentum-body");
-            if (data.momentums) {
-                const ranked = Object.entries(data.momentums).sort((a,b) => b[1] - a[1]);
-                momBody.innerHTML = ranked.map(([asset, mom]) => {
-                    const isTop = data.top_ranked && data.top_ranked.includes(asset);
-                    return `<tr><td><div class="asset-icon"><div class="asset-badge ${asset.toLowerCase()}">${asset}</div><span style="font-weight:600">${asset}</span></div></td><td style="font-weight:600;color:${mom >= 0 ? "#22c55e" : "#ef4444"}">${mom >= 0 ? "+" : ""}${mom.toFixed(2)}%</td><td>${isTop ? "<span style=color:#22c55e;font-weight:600>⭐ HOLDING</span>" : "<span style=color:#64748b>—</span>"}</td></tr>`;
-                }).join("");
-            }
-        }
-        function loadDashboard() {
-            fetch('dashboard_data.json?t=' + Date.now())  // cache-bust so browsers don't serve a stale copy
-                .then(res => {
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    return res.json();
-                })
-                .then(renderDashboard)
-                .catch(err => {
-                    document.getElementById('bot-status').textContent = 'Data unavailable';
-                    document.getElementById('holdings-body').innerHTML =
-                        '<tr><td colspan="4" class="empty-state">Could not load dashboard_data.json (' + err.message + ')</td></tr>';
-                    console.error('Dashboard load failed:', err);
-                });
-        }
+  <div class="card">
+    <div class="card-label">Momentum Leaderboard <span style="opacity:0.6;">&middot; risk-adjusted score</span></div>
+    <div id="leaderboard"><div class="empty-state">Loading&hellip;</div></div>
+  </div>
 
-        loadDashboard();
-        setInterval(loadDashboard, 60000);  // refresh every 60s while the page is open
-    </script>
+  <div class="card">
+    <div class="card-label">Current Holdings</div>
+    <table>
+      <thead><tr><th>Asset</th><th>Quantity</th><th>Value</th><th>Allocation</th></tr></thead>
+      <tbody id="holdings-body"><tr><td colspan="4" class="empty-state">Loading&hellip;</td></tr></tbody>
+    </table>
+  </div>
+
+  <footer>Last updated: <span id="last-updated-time">--</span></footer>
+</div>
+
+<script>
+  const assetTypes = { SPY:'stock', XLK:'stock', XLI:'stock', XLF:'stock', BTC:'crypto', ETH:'crypto', XRP:'crypto' };
+
+  const actionLabels = {
+    'rebalanced': { label: 'Rebalanced', color: 'var(--green)' },
+    'no_changes_needed': { label: 'Checked — no changes needed', color: 'var(--green)' },
+    'no_action_needed': { label: 'Within holding period', color: 'var(--text-dim)' },
+    'skipped_market_closed': { label: 'Skipped — market closed', color: 'var(--amber-bright)' },
+    'no_cash_available': { label: 'No cash available', color: 'var(--amber-bright)' },
+    'buys_failed': { label: 'Buy orders failed', color: 'var(--red)' },
+    'aborted_bad_data': { label: 'Aborted — bad price data', color: 'var(--red)' },
+    'aborted_data_quality': { label: 'Aborted — data quality check failed', color: 'var(--red)' },
+    'aborted_insufficient_data': { label: 'Aborted — not enough history', color: 'var(--red)' },
+    'paused': { label: 'Paused', color: 'var(--amber-bright)' },
+  };
+
+  function fmtCurrency(v) { return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+
+  function renderSparkline(history) {
+    const svg = document.getElementById('sparkline');
+    if (!history || history.length < 2) { svg.innerHTML = ''; return; }
+    const values = history.map(h => h.equity);
+    const min = Math.min(...values), max = Math.max(...values);
+    const range = (max - min) || 1;
+    const w = 300, h = 36, pad = 3;
+    const pts = values.map((v, i) => {
+      const x = (i / (values.length - 1)) * w;
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const rising = values[values.length - 1] >= values[0];
+    const color = rising ? '#3FBF6B' : '#E5534B';
+    const line = `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const areaPts = `0,${h} ${pts.join(' ')} ${w},${h}`;
+    const area = `<polygon points="${areaPts}" fill="${color}" opacity="0.08"/>`;
+    svg.innerHTML = area + line;
+  }
+
+  function renderLeaderboard(data) {
+    const el = document.getElementById('leaderboard');
+    const scores = data.scores || {};
+    const moms = data.momentums || {};
+    const heldSet = new Set((data.current_holdings || []).map(h => h.asset));
+    const assets = Object.keys(scores).length ? Object.keys(scores) : Object.keys(moms);
+    if (!assets.length) { el.innerHTML = '<div class="empty-state">No ranking data yet</div>'; return; }
+
+    const ranked = assets.map(a => ({ asset: a, score: scores[a] ?? moms[a], mom: moms[a] ?? scores[a] }))
+      .sort((a, b) => b.score - a.score);
+    const maxPositive = Math.max(1, ...ranked.map(r => r.score > 0 ? r.score : 0));
+
+    el.innerHTML = ranked.map(r => {
+      const held = heldSet.has(r.asset);
+      const widthPct = r.score > 0 ? Math.max(4, (r.score / maxPositive) * 100) : 3;
+      const fillClass = r.score <= 0 ? 'lb-fill-neg' : (held ? 'lb-fill-held' : 'lb-fill-unheld');
+      const momColor = r.mom >= 0 ? 'var(--green)' : 'var(--red)';
+      return `<div class="lb-row">
+        <div class="lb-asset">${r.asset}</div>
+        <div class="lb-track"><div class="lb-fill ${fillClass}" style="width:${widthPct}%"></div></div>
+        <div class="lb-mom" style="color:${momColor}">${fmtPct(r.mom)}</div>
+        <div class="lb-status" style="color:${held ? 'var(--amber-bright)' : 'var(--text-faint)'}">${held ? '★ HELD' : '—'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderHoldings(data) {
+    const tbody = document.getElementById('holdings-body');
+    const holdings = data.current_holdings;
+    if (!holdings || !holdings.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No holdings</td></tr>';
+      return;
+    }
+    tbody.innerHTML = holdings.map(h => {
+      const type = assetTypes[h.asset] || 'stock';
+      return `<tr>
+        <td><span class="asset-chip ${type}">${h.asset}</span></td>
+        <td class="mono">${h.qty.toFixed(4)}</td>
+        <td class="mono" style="font-weight:600">${fmtCurrency(h.value)}</td>
+        <td>
+          <div class="alloc-bar-wrap">
+            <div class="alloc-track"><div class="alloc-fill" style="width:${h.pct}%"></div></div>
+            <span class="mono" style="font-size:12.5px; min-width:42px; text-align:right;">${h.pct.toFixed(1)}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderDashboard(data) {
+    const isRunning = data.status === 'running';
+    const statusPill = document.getElementById('status-pill');
+    document.getElementById('bot-status').textContent = isRunning ? 'Running' : 'Paused';
+    statusPill.className = 'pill ' + (isRunning ? 'pill-green' : 'pill-amber');
+
+    if (typeof data.market_open === 'boolean') {
+      const marketPill = document.getElementById('market-pill');
+      document.getElementById('market-status').textContent = data.market_open ? 'Market Open' : 'Market Closed';
+      marketPill.className = 'pill ' + (data.market_open ? 'pill-green' : 'pill-muted');
+    }
+
+    const action = actionLabels[data.last_action] || { label: data.last_action || 'No activity recorded yet', color: 'var(--text-dim)' };
+    const actionEl = document.getElementById('last-action');
+    actionEl.textContent = action.label;
+    actionEl.style.color = action.color;
+    document.getElementById('last-action-detail').textContent = data.last_action_detail || '';
+    document.getElementById('last-checked-time').textContent = data.last_checked ? new Date(data.last_checked).toLocaleString() : '--';
+
+    const acct = data.account;
+    if (acct) {
+      document.getElementById('total-equity').textContent = fmtCurrency(acct.total_equity);
+      document.getElementById('cash').textContent = fmtCurrency(acct.cash);
+      const ret = acct.total_return_pct;
+      const retEl = document.getElementById('total-return');
+      retEl.textContent = fmtPct(ret) + ' all time';
+      retEl.className = 'kpi-sub ' + (ret >= 0 ? 'positive' : 'negative');
+      document.getElementById('outperformance').textContent = fmtPct(ret);
+      document.getElementById('outperformance').className = 'kpi-value ' + (ret >= 0 ? 'positive' : 'negative');
+      const outLabel = document.getElementById('outperf-label');
+      outLabel.textContent = ret >= 0 ? 'Outperforming start' : 'Underperforming start';
+      outLabel.className = 'kpi-sub ' + (ret >= 0 ? 'positive' : 'negative');
+    } else {
+      document.getElementById('total-equity').textContent = 'No data yet';
+      document.getElementById('outperformance').textContent = '--';
+    }
+
+    if (data.last_updated) {
+      const lastUp = new Date(data.last_updated);
+      document.getElementById('last-updated-time').textContent = lastUp.toLocaleString();
+      document.getElementById('last-rebal').textContent = lastUp.toLocaleDateString();
+    }
+    document.getElementById('next-rebal').textContent = 'per REBALANCE_FREQ_DAYS';
+
+    renderSparkline(data.history);
+    renderLeaderboard(data);
+    renderHoldings(data);
+  }
+
+  function loadDashboard() {
+    fetch('dashboard_data.json?t=' + Date.now())
+      .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(renderDashboard)
+      .catch(err => {
+        document.getElementById('bot-status').textContent = 'Data unavailable';
+        document.getElementById('holdings-body').innerHTML =
+          '<tr><td colspan="4" class="empty-state">Could not load dashboard_data.json (' + err.message + ')</td></tr>';
+        console.error('Dashboard load failed:', err);
+      });
+  }
+
+  loadDashboard();
+  setInterval(loadDashboard, 60000);
+</script>
 </body>
 </html>

@@ -31,7 +31,7 @@
   "last_action": "skipped_market_closed",
   "last_action_detail": "Market is closed. Will retry on next scheduled check.",
   "market_open": false,
-  "last_checked": "2026-07-29T02:53:23.640128",
+  "last_checked": "2026-07-29T11:58:15.188161",
   "scores": {
     "SPY": -0.645,
     "XLK": -4.344,
@@ -69,6 +69,10 @@
     {
       "t": "2026-07-29T02:53:23.890223",
       "equity": 101324.4
+    },
+    {
+      "t": "2026-07-29T11:58:15.405566",
+      "equity": 101341.17
     }
   ]
 }
