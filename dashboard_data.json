@@ -1,25 +1,70 @@
 {
-  "last_updated": "2026-07-25T13:29:38.650313",
+  "last_updated": "2026-07-28T14:33:34.108042",
   "status": "running",
   "account": {
-    "total_equity": 10000.0,
+    "total_equity": 17000.0,
     "cash": 10000,
     "start_value": 10000,
-    "total_return_pct": 0.0
+    "total_return_pct": 70.0
   },
-  "current_holdings": [],
+  "current_holdings": [
+    {
+      "asset": "XLF",
+      "qty": 122.7424,
+      "value": 7000.0,
+      "pct": 41.2
+    }
+  ],
   "momentums": {
-    "SPY": 0.67,
-    "XLK": -2.51,
-    "XLI": 0.96,
-    "XLF": 3.93
+    "SPY": -0.39,
+    "XLK": -8.04,
+    "XLI": -0.21,
+    "XLF": 6.16,
+    "BTC": 5.04,
+    "ETH": 16.45,
+    "XRP": -0.72
   },
   "top_ranked": [
     "XLF",
-    "XLI"
+    "ETH"
   ],
-  "last_action": "skipped_market_closed",
-  "last_action_detail": "Market is closed. Will retry on next scheduled check.",
+  "last_action": "no_action_needed",
+  "last_action_detail": "Within holding period \u2014 next rebalance in 20 day(s).",
   "market_open": false,
-  "last_checked": "2026-07-27T11:51:38.204948"
+  "last_checked": "2026-07-29T02:31:26.556833",
+  "scores": {
+    "SPY": -0.645,
+    "XLK": -4.344,
+    "XLI": -0.256,
+    "XLF": 6.926,
+    "BTC": 2.343,
+    "ETH": 5.653,
+    "XRP": -0.283
+  },
+  "history": [
+    {
+      "t": "2026-07-28T14:33:34.402824",
+      "equity": 101257.95
+    },
+    {
+      "t": "2026-07-28T14:35:04.570382",
+      "equity": 101263.13
+    },
+    {
+      "t": "2026-07-28T16:13:26.308757",
+      "equity": 101293.51
+    },
+    {
+      "t": "2026-07-28T16:15:07.703770",
+      "equity": 101293.51
+    },
+    {
+      "t": "2026-07-29T02:27:02.991856",
+      "equity": 101324.4
+    },
+    {
+      "t": "2026-07-29T02:31:26.767990",
+      "equity": 101324.4
+    }
+  ]
 }

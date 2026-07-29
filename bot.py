@@ -18,7 +18,8 @@ MAX_DATA_AGE_HOURS = 26
 
 from config import (
     ALPACA_API_KEY, ALPACA_SECRET, ALPACA_BASE_URL,
-    LOOKBACK_DAYS, TOP_N, REBALANCE_FREQ_DAYS, STARTING_CAPITAL, MAX_DEPLOYMENT, ASSETS
+    LOOKBACK_DAYS, TOP_N, REBALANCE_FREQ_DAYS, STARTING_CAPITAL, MAX_DEPLOYMENT, ASSETS, VOL_FLOOR,
+    MAX_ASSET_WEIGHT
 )
 
 # ─── Logging ───
@@ -32,6 +33,43 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def cap_weights(weights: dict, max_weight: float) -> dict:
+    """Cap each weight at max_weight, redistributing any excess proportionally
+    among the remaining (uncapped) assets, re-checking in case that pushes
+    another asset over the cap too. If max_weight * n < 1 (cap infeasible
+    even split evenly across n assets), falls back to an equal split."""
+    weights = dict(weights)
+    n = len(weights)
+    if n == 0:
+        return weights
+    if max_weight * n < 1 - 1e-9:
+        return {k: 1.0 / n for k in weights}
+
+    fixed = {}
+    remaining = set(weights.keys())
+    while remaining:
+        leftover_mass = 1.0 - sum(fixed.values())
+        remaining_total = sum(weights[k] for k in remaining)
+        if remaining_total <= 0:
+            share = leftover_mass / len(remaining)
+            for k in remaining:
+                fixed[k] = share
+            break
+
+        renormalized = {k: weights[k] / remaining_total * leftover_mass for k in remaining}
+        over_cap = [k for k, w in renormalized.items() if w > max_weight + 1e-9]
+
+        if not over_cap:
+            fixed.update(renormalized)
+            break
+
+        for k in over_cap:
+            fixed[k] = max_weight
+            remaining.discard(k)
+
+    return fixed
 
 
 # ─── Alpaca Trader ───
@@ -48,6 +86,16 @@ class AlpacaTrader:
         except Exception as e:
             logger.error(f"Could not check market clock: {e}")
             return False  # fail safe: assume closed if we can't confirm otherwise
+
+    def get_equity(self):
+        """Real account equity from Alpaca directly -- used for history tracking
+        so the dashboard's gains-over-time chart reflects ground truth, not our
+        own potentially-drifted internal bookkeeping."""
+        try:
+            return float(self.api.get_account().equity)
+        except Exception as e:
+            logger.error(f"Could not fetch equity for history tracking: {e}")
+            return None
 
     def get_position(self, symbol):
         try:
@@ -240,6 +288,19 @@ class LiveRotationBot:
         for name in self.assets:
             if name in prices.columns:
                 prices[f'{name}_mom'] = prices[name] / prices[name].shift(self.lookback) - 1
+
+                # Risk-adjusted score = momentum / recent volatility (Sharpe-style).
+                # Raw momentum alone isn't a fair comparison across asset classes --
+                # crypto's daily swings are structurally larger than an ETF's, so a
+                # crypto asset can top the raw-momentum ranking just because it's
+                # more volatile, not because it's genuinely the stronger pick.
+                # Dividing by volatility puts everything on the same risk-adjusted
+                # footing. VOL_FLOOR prevents a near-zero-volatility asset from
+                # producing an artificially inflated score.
+                daily_returns = prices[name].pct_change()
+                vol = daily_returns.rolling(self.lookback).std()
+                prices[f'{name}_vol'] = vol
+                prices[f'{name}_score'] = prices[f'{name}_mom'] / vol.clip(lower=VOL_FLOOR)
         return prices
 
     def should_rebalance(self):
@@ -256,13 +317,18 @@ class LiveRotationBot:
         logger.info(f"REBALANCE: {now.strftime('%Y-%m-%d %H:%M')}")
         logger.info("=" * 50)
 
-        # Rank assets by momentum
-        momentums = {a: today[f'{a}_mom'] for a in self.assets if pd.notna(today.get(f'{a}_mom'))}
-        ranked = sorted(momentums.items(), key=lambda x: x[1], reverse=True)
+        # Rank assets by risk-adjusted score, not raw momentum
+        scores = {a: today[f'{a}_score'] for a in self.assets if pd.notna(today.get(f'{a}_score'))}
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         top_assets = [a for a, _ in ranked[:self.top_n]]
         top_set = set(top_assets)
 
-        logger.info(f"Momentums: " + ", ".join([f"{a}={m:+.1%}" for a, m in ranked]))
+        # Log both raw momentum and the risk-adjusted score used for ranking,
+        # so it's always visible *why* something ranked where it did.
+        detail = ", ".join(
+            f"{a}=score:{s:+.2f}(mom:{today[f'{a}_mom']:+.1%})" for a, s in ranked
+        )
+        logger.info(f"Rankings: {detail}")
         logger.info(f"TOP {self.top_n}: {', '.join(top_assets)}")
 
         # Trade only the delta. Selling something and immediately rebuying the
@@ -308,14 +374,43 @@ class LiveRotationBot:
             self.save_dashboard(cash, prices, 'no_cash_available', 'No buying power available for new positions.')
             return
 
-        # BUY only the newly-entered top assets
-        logger.info("--- BUYING ---")
-        alloc = cash / len(to_buy)
+        # BUY only the newly-entered top assets, sized by inverse volatility:
+        # a calmer pick gets more capital, a wilder one gets less. This
+        # extends the same momentum/volatility logic already used to RANK
+        # assets to how much gets deployed into each one -- previously an
+        # equal-dollar split ignored volatility entirely at this stage, which
+        # was inconsistent with how ranking already treats it.
+        #
+        # NOTE: only sizes assets being newly bought this cycle (to_buy).
+        # Existing unchanged holdings keep whatever allocation they already
+        # have -- consistent with the diff-based rebalance approach (avoids
+        # the churn / wash-trade risk that resizing untouched positions
+        # every cycle would reintroduce).
+        inv_vols = {}
+        for name in to_buy:
+            vol = today.get(f'{name}_vol')
+            if pd.isna(vol):
+                logger.warning(f"{name}: no volatility data available, skipping from this buy.")
+                continue
+            inv_vols[name] = 1.0 / max(vol, VOL_FLOOR)
+
+        total_inv_vol = sum(inv_vols.values())
+        weights = (
+            {name: iv / total_inv_vol for name, iv in inv_vols.items()}
+            if total_inv_vol > 0
+            else {name: 1.0 / len(to_buy) for name in to_buy}  # fallback; shouldn't normally trigger
+        )
+        weights = cap_weights(weights, MAX_ASSET_WEIGHT)
+
+        logger.info("--- BUYING (inverse-volatility sized) ---")
         buy_failures = []
         for name in to_buy:
             cfg = self.assets[name]
             price = today[name]
+            weight = weights.get(name, 0)
+            alloc = cash * weight
             qty = round(alloc / price, 4)
+            logger.info(f"  {name}: weight={weight:.1%} alloc=${alloc:,.2f}")
             if qty > 0:
                 tif = 'gtc' if cfg['type'] == 'crypto' else 'day'
                 success = self.trader.market_order(cfg['symbol'], qty, 'buy', time_in_force=tif)
@@ -369,7 +464,26 @@ class LiveRotationBot:
 
         data.update(updates)
         data['last_checked'] = datetime.now().isoformat()
-        data.setdefault('status', 'running')
+        # Force status back to 'running' unless THIS call explicitly says
+        # otherwise (only the pause-check path does). Previously used
+        # setdefault(), which let a stale 'paused' status persist forever
+        # in the file even after resuming, since every other call site
+        # never mentions 'status' at all.
+        if 'status' not in updates:
+            data['status'] = 'running'
+
+        # Record a real equity snapshot (straight from Alpaca, not our own
+        # internal bookkeeping) so the dashboard can chart gains over time.
+        # This runs on every write -- skips included -- so the chart has
+        # reasonable density even on days nothing gets traded.
+        equity_now = self.trader.get_equity()
+        if equity_now is not None:
+            history = data.get('history', [])
+            history.append({'t': datetime.now().isoformat(), 'equity': round(equity_now, 2)})
+            MAX_HISTORY_POINTS = 500  # keeps the file bounded over years of daily runs
+            if len(history) > MAX_HISTORY_POINTS:
+                history = history[-MAX_HISTORY_POINTS:]
+            data['history'] = history
 
         os.makedirs('data', exist_ok=True)
         with open('data/bot_data.json', 'w') as f:
@@ -380,7 +494,11 @@ class LiveRotationBot:
     def save_dashboard(self, cash, prices, last_action='rebalanced', last_action_detail=''):
         today = prices.iloc[-1]
         momentums = {a: today[f'{a}_mom'] for a in self.assets if pd.notna(today.get(f'{a}_mom'))}
-        ranked = sorted(momentums.items(), key=lambda x: x[1], reverse=True)
+        scores = {a: today[f'{a}_score'] for a in self.assets if pd.notna(today.get(f'{a}_score'))}
+        # Rank by the SAME risk-adjusted score used to actually decide trades --
+        # ranking by raw momentum here would show a "top ranked" list that could
+        # disagree with what was really bought.
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
         portfolio_value = cash + sum(
             self.holdings.get(a, 0) * today[a] for a in self.assets if a in prices.columns
@@ -406,6 +524,7 @@ class LiveRotationBot:
             },
             'current_holdings': holdings_list,
             'momentums': {k: round(v * 100, 2) for k, v in momentums.items()},
+            'scores': {k: round(v, 3) for k, v in scores.items()},
             'top_ranked': [a for a, _ in ranked[:self.top_n]],
             'market_open': True,  # save_dashboard is only reached when the market-open gate already passed
             'last_action': last_action,
@@ -424,6 +543,15 @@ class LiveRotationBot:
         logger.info("All positions closed.")
 
     def run_once(self):
+        if os.path.exists('data/.paused'):
+            logger.info("Bot is paused (data/.paused exists) — skipping this check.")
+            self._write_dashboard({
+                'status': 'paused',
+                'last_action': 'paused',
+                'last_action_detail': 'Bot is paused. Remove data/.paused to resume.',
+            })
+            return
+
         if self.should_rebalance():
             if not self.refresh_price_data():
                 logger.warning("Data refresh failed — will fall back to cached CSV if it's still fresh enough.")
