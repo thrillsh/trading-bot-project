@@ -1,45 +1,38 @@
 {
-  "last_updated": "2026-07-29T16:04:39.266222",
+  "last_updated": "2026-07-30T16:09:13.256051",
   "status": "running",
   "account": {
-    "total_equity": 21961.72,
+    "total_equity": 10000.0,
     "cash": 10000,
     "start_value": 10000,
-    "total_return_pct": 119.62
+    "total_return_pct": 0.0
   },
-  "current_holdings": [
-    {
-      "asset": "XLF",
-      "qty": 209.7443,
-      "value": 11961.72,
-      "pct": 54.5
-    }
-  ],
+  "current_holdings": [],
   "momentums": {
-    "SPY": -1.86,
-    "XLK": -12.06,
-    "XLI": -4.42,
-    "XLF": 6.38,
-    "BTC": 9.1,
-    "ETH": 20.28,
-    "XRP": 2.55
+    "SPY": -1.01,
+    "XLK": -5.73,
+    "XLI": -3.67,
+    "XLF": 3.31,
+    "BTC": 8.03,
+    "ETH": 19.4,
+    "XRP": 3.72
   },
   "top_ranked": [
     "ETH",
-    "XLF"
+    "BTC"
   ],
   "last_action": "buys_failed",
-  "last_action_detail": "All buy orders failed: ETH",
+  "last_action_detail": "All buy orders failed: ETH, BTC",
   "market_open": true,
-  "last_checked": "2026-07-29T16:04:39.266454",
+  "last_checked": "2026-07-30T16:09:13.256244",
   "scores": {
-    "SPY": -2.969,
-    "XLK": -7.034,
-    "XLI": -4.392,
-    "XLF": 6.671,
-    "BTC": 4.51,
-    "ETH": 7.145,
-    "XRP": 1.027
+    "SPY": -1.373,
+    "XLK": -2.73,
+    "XLI": -3.596,
+    "XLF": 3.654,
+    "BTC": 4.069,
+    "ETH": 6.988,
+    "XRP": 1.491
   },
   "history": [
     {
@@ -77,6 +70,10 @@
     {
       "t": "2026-07-29T16:04:39.272892",
       "equity": 101215.33
+    },
+    {
+      "t": "2026-07-30T16:09:13.277437",
+      "equity": 101124.09
     }
   ]
 }
