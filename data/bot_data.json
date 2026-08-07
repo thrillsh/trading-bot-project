@@ -29,9 +29,9 @@
     "XLF"
   ],
   "last_action": "no_action_needed",
-  "last_action_detail": "Within holding period \u2014 next rebalance in 16 day(s).",
+  "last_action_detail": "Within holding period \u2014 next rebalance in 14 day(s).",
   "market_open": true,
-  "last_checked": "2026-08-05T16:17:23.722554",
+  "last_checked": "2026-08-07T15:28:23.422850",
   "scores": {
     "SPY": -0.252,
     "XLK": -1.622,
@@ -97,6 +97,10 @@
     {
       "t": "2026-08-05T16:17:23.734169",
       "equity": 101232.24
+    },
+    {
+      "t": "2026-08-07T15:28:23.430650",
+      "equity": 101191.05
     }
   ]
 }
