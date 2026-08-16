@@ -1,0 +1,71 @@
+name: Market Scanner
+
+# READ-ONLY research job. Completely separate from Bot Heartbeat
+# (rebalance.yml) -- runs its own script (market_scanner.py), on its own
+# schedule, and only ever commits its own output files under
+# data/scanner/. It never touches bot.py, config.py's ASSETS pool,
+# data/state.json, or dashboard_data.json. Nothing here places trades.
+
+on:
+  schedule:
+    # Daily wide scan: ~9:45am ET weekdays, shortly after the trading bot's
+    # own 9:35am ET run -- wider 20-day lookback, once a day.
+    - cron: '45 14 * * 1-5'
+    # "Intraday" scan: every hour during roughly US market hours
+    # (11am-4pm ET / 15:00-20:00 UTC), weekdays -- shorter 5-day lookback,
+    # run more often to catch faster-developing moves. NOTE: GitHub Actions
+    # scheduled crons are best-effort and can run several minutes late
+    # during high load, especially on the hour -- don't rely on this for
+    # precise timing.
+    - cron: '0 15-20 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Scan mode'
+        required: false
+        default: 'daily'
+        type: choice
+        options: [daily, intraday]
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Determine scan mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "45 14 * * 1-5" ]; then
+            echo "mode=daily" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=intraday" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run scanner
+        run: python market_scanner.py --mode ${{ steps.mode.outputs.mode }}
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+
+      - name: Commit scanner findings
+        run: |
+          git config user.name "market-scanner"
+          git config user.email "scanner@users.noreply.github.com"
+          git add -f data/scanner/*.json
+          git diff --staged --quiet || git commit -m "Scanner (${{ steps.mode.outputs.mode }}): $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
