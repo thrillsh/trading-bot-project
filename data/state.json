@@ -1,7 +1,29 @@
 {
-  "last_rebalance": "2026-07-31T16:18:27.792087",
   "holdings": {
     "XLF": 122.7532
   },
-  "updated_at": "2026-07-31T16:18:27.832415"
+  "in_top_streak": {
+    "SPY": 1,
+    "XLK": 1,
+    "XLI": 0,
+    "XLF": 1,
+    "XLE": 1,
+    "IWM": 1,
+    "BTC": 0,
+    "ETH": 0,
+    "XRP": 0
+  },
+  "out_top_streak": {
+    "SPY": 0,
+    "XLK": 0,
+    "XLI": 1,
+    "XLF": 0,
+    "XLE": 0,
+    "IWM": 0,
+    "BTC": 1,
+    "ETH": 1,
+    "XRP": 1
+  },
+  "last_streak_date": "2026-08-14",
+  "updated_at": "2026-08-16T12:24:23.135849"
 }

@@ -1,45 +1,60 @@
 {
-  "last_updated": "2026-07-31T16:18:27.833231",
+  "last_updated": "2026-08-16T12:24:28.174966",
   "status": "running",
   "account": {
-    "total_equity": 17000.0,
-    "cash": 10000,
-    "start_value": 10000,
-    "total_return_pct": 70.0
+    "account_equity": 176604.26,
+    "account_cash": 104122.36,
+    "deployed_market_value": 7139.33,
+    "deployed_cost_basis": 7000.61,
+    "deployed_unrealized_pl": 138.71,
+    "deployed_return_pct": 1.98,
+    "start_value": 10000
   },
   "current_holdings": [
     {
       "asset": "XLF",
       "qty": 122.7532,
-      "value": 7000.0,
-      "pct": 41.2
+      "avg_entry_price": 57.03,
+      "current_price": 58.16,
+      "market_value": 7139.33,
+      "cost_basis": 7000.61,
+      "unrealized_pl": 138.71,
+      "unrealized_plpc": 1.98,
+      "pct": 100.0
     }
   ],
   "momentums": {
-    "SPY": -0.2,
-    "XLK": -3.38,
-    "XLI": -2.35,
-    "XLF": 2.53,
-    "BTC": 2.06,
-    "ETH": 9.52,
-    "XRP": -2.38
+    "SPY": 4.45,
+    "XLK": 8.21,
+    "XLI": 3.96,
+    "XLF": 3.38,
+    "XLE": 7.33,
+    "IWM": 3.76,
+    "BTC": -1.43,
+    "ETH": 2.12,
+    "XRP": -8.22
   },
   "top_ranked": [
-    "ETH",
-    "XLF"
+    "IWM",
+    "SPY",
+    "XLE",
+    "XLF",
+    "XLK"
   ],
-  "last_action": "no_action_needed",
-  "last_action_detail": "Within holding period \u2014 next rebalance in 7 day(s).",
-  "market_open": true,
-  "last_checked": "2026-08-14T15:24:04.995223",
+  "last_action": "aborted_insufficient_data",
+  "last_action_detail": "Only 8 rows, need 21.",
+  "market_open": false,
+  "last_checked": "2026-08-16T13:16:19.913024",
   "scores": {
-    "SPY": -0.252,
-    "XLK": -1.622,
-    "XLI": -2.206,
-    "XLF": 2.964,
-    "BTC": 1.008,
-    "ETH": 3.562,
-    "XRP": -0.989
+    "SPY": 5.283,
+    "XLK": 3.924,
+    "XLI": 3.6,
+    "XLF": 5.139,
+    "XLE": 4.708,
+    "IWM": 3.903,
+    "BTC": -1.116,
+    "ETH": 1.352,
+    "XRP": -5.199
   },
   "history": [
     {
@@ -121,6 +136,34 @@
     {
       "t": "2026-08-14T15:24:05.040348",
       "equity": 101267.21
+    },
+    {
+      "t": "2026-08-15T11:00:41.364630",
+      "equity": 101261.69
+    },
+    {
+      "t": "2026-08-15T11:09:26.803708",
+      "equity": 101261.69
+    },
+    {
+      "t": "2026-08-15T11:17:22.087989",
+      "equity": 101261.69
+    },
+    {
+      "t": "2026-08-15T11:17:22.490668",
+      "equity": 101261.69
+    },
+    {
+      "t": "2026-08-15T19:35:24.832627",
+      "equity": 101261.69
+    },
+    {
+      "t": "2026-08-16T12:24:30.151255",
+      "equity": 176604.25
+    },
+    {
+      "t": "2026-08-16T13:16:22.819817",
+      "equity": 176636.86
     }
   ]
 }

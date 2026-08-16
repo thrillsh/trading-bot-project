@@ -141,7 +141,7 @@
       <div class="kpi-sub neutral">uninvested</div>
     </div>
     <div class="card">
-      <div class="card-label">Strategy Return <span style="opacity:0.6;">&middot; on deployed capital</span></div>
+      <div class="card-label">vs Starting Capital</div>
       <div class="kpi-value" id="outperformance">--</div>
       <div class="kpi-sub" id="outperf-label">--</div>
     </div>
@@ -160,7 +160,7 @@
   <div class="card">
     <div class="card-label">Current Holdings</div>
     <table>
-      <thead><tr><th>Asset</th><th>Quantity</th><th>Avg Cost</th><th>Value</th><th>P&amp;L</th><th>Allocation</th></tr></thead>
+      <thead><tr><th>Asset</th><th>Quantity</th><th>Value</th><th>Allocation</th></tr></thead>
       <tbody id="holdings-body"><tr><td colspan="4" class="empty-state">Loading&hellip;</td></tr></tbody>
     </table>
   </div>
@@ -184,14 +184,8 @@
     'paused': { label: 'Paused', color: 'var(--amber-bright)' },
   };
 
-  function fmtCurrency(v) {
-    if (v === undefined || v === null || isNaN(v)) return '--';
-    return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  function fmtPct(v) {
-    if (v === undefined || v === null || isNaN(v)) return '--';
-    return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
-  }
+  function fmtCurrency(v) { return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
 
   function renderSparkline(history) {
     const svg = document.getElementById('sparkline');
@@ -243,21 +237,15 @@
     const tbody = document.getElementById('holdings-body');
     const holdings = data.current_holdings;
     if (!holdings || !holdings.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No holdings</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No holdings</td></tr>';
       return;
     }
     tbody.innerHTML = holdings.map(h => {
       const type = assetTypes[h.asset] || 'stock';
-      const plColor = h.unrealized_pl >= 0 ? 'var(--green)' : 'var(--red)';
       return `<tr>
         <td><span class="asset-chip ${type}">${h.asset}</span></td>
         <td class="mono">${h.qty.toFixed(4)}</td>
-        <td class="mono">${fmtCurrency(h.avg_entry_price)}</td>
-        <td class="mono" style="font-weight:600">${fmtCurrency(h.market_value)}</td>
-        <td class="mono" style="color:${plColor}; font-weight:600">
-          ${fmtCurrency(h.unrealized_pl)}<br>
-          <span style="font-size:11px; opacity:0.8;">${fmtPct(h.unrealized_plpc)}</span>
-        </td>
+        <td class="mono" style="font-weight:600">${fmtCurrency(h.value)}</td>
         <td>
           <div class="alloc-bar-wrap">
             <div class="alloc-track"><div class="alloc-fill" style="width:${h.pct}%"></div></div>
@@ -287,29 +275,19 @@
     document.getElementById('last-action-detail').textContent = data.last_action_detail || '';
     document.getElementById('last-checked-time').textContent = data.last_checked ? new Date(data.last_checked).toLocaleString() : '--';
 
-    // Uses the fixed backend's real field names - account_equity/account_cash
-    // are Alpaca's own ground-truth totals; deployed_* fields are this
-    // bot's real P&L on what it's actually invested, based on real cost
-    // basis. Cash is never added into "return" as if it were profit.
     const acct = data.account;
     if (acct) {
-      document.getElementById('total-equity').textContent = fmtCurrency(acct.account_equity);
-      document.getElementById('cash').textContent = fmtCurrency(acct.account_cash);
-
-      const deployedPct = acct.deployed_return_pct || 0;
-      const totalReturnEl = document.getElementById('total-return');
-      totalReturnEl.textContent = acct.deployed_cost_basis > 0
-        ? fmtCurrency(acct.deployed_market_value) + ' invested (of ' + fmtCurrency(acct.account_equity) + ' total)'
-        : 'Nothing currently deployed';
-      totalReturnEl.className = 'kpi-sub neutral';
-
-      document.getElementById('outperformance').textContent = fmtPct(deployedPct);
-      document.getElementById('outperformance').className = 'kpi-value ' + (deployedPct >= 0 ? 'positive' : 'negative');
+      document.getElementById('total-equity').textContent = fmtCurrency(acct.total_equity);
+      document.getElementById('cash').textContent = fmtCurrency(acct.cash);
+      const ret = acct.total_return_pct;
+      const retEl = document.getElementById('total-return');
+      retEl.textContent = fmtPct(ret) + ' all time';
+      retEl.className = 'kpi-sub ' + (ret >= 0 ? 'positive' : 'negative');
+      document.getElementById('outperformance').textContent = fmtPct(ret);
+      document.getElementById('outperformance').className = 'kpi-value ' + (ret >= 0 ? 'positive' : 'negative');
       const outLabel = document.getElementById('outperf-label');
-      outLabel.textContent = acct.deployed_cost_basis > 0
-        ? fmtCurrency(acct.deployed_unrealized_pl) + ' unrealized'
-        : 'no open positions';
-      outLabel.className = 'kpi-sub ' + (deployedPct >= 0 ? 'positive' : 'negative');
+      outLabel.textContent = ret >= 0 ? 'Outperforming start' : 'Underperforming start';
+      outLabel.className = 'kpi-sub ' + (ret >= 0 ? 'positive' : 'negative');
     } else {
       document.getElementById('total-equity').textContent = 'No data yet';
       document.getElementById('outperformance').textContent = '--';
@@ -334,7 +312,7 @@
       .catch(err => {
         document.getElementById('bot-status').textContent = 'Data unavailable';
         document.getElementById('holdings-body').innerHTML =
-          '<tr><td colspan="6" class="empty-state">Could not load dashboard_data.json (' + err.message + ')</td></tr>';
+          '<tr><td colspan="4" class="empty-state">Could not load dashboard_data.json (' + err.message + ')</td></tr>';
         console.error('Dashboard load failed:', err);
       });
   }
