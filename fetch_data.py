@@ -5,7 +5,7 @@ import os
 import time
 from functools import reduce
 
-from config import ASSETS, ALPACA_API_KEY, ALPACA_SECRET, ALPACA_BASE_URL
+from config import ASSETS
 
 stock_assets = {name: cfg['symbol'] for name, cfg in ASSETS.items() if cfg['type'] == 'stock'}
 crypto_assets = {name: cfg['symbol'] for name, cfg in ASSETS.items() if cfg['type'] == 'crypto'}
@@ -56,46 +56,51 @@ for name, ticker in stock_assets.items():
     print("OK")
 
 if crypto_assets:
-    print("Fetching crypto data (Alpaca)...")
-    import alpaca_trade_api as tradeapi
-    from alpaca_trade_api.rest import TimeFrame
-    from datetime import timedelta
+    print("Fetching crypto data (Binance via ccxt)...")
+    try:
+        import ccxt
+    except ImportError:
+        print("ERROR: ccxt not installed. Run: pip install ccxt")
+        exit(1)
 
-    api = tradeapi.REST(ALPACA_API_KEY, ALPACA_SECRET, ALPACA_BASE_URL, api_version='v2')
-    end = datetime.now()
-    start = end - timedelta(days=730)  # ~2y, matching the stock fetch's period='2y'
+    # Same approach as market_scanner.py: testnet credentials if available,
+    # but public market data works without authentication too.
+    api_key = os.environ.get('BINANCE_TESTNET_KEY', '')
+    api_secret = os.environ.get('BINANCE_TESTNET_SECRET', '')
+    exchange = ccxt.binance({
+        'apiKey': api_key,
+        'secret': api_secret,
+        'enableRateLimit': True,
+        'timeout': 15000,
+    })
+    if api_key and api_secret:
+        exchange.set_sandbox_mode(True)
 
+    # NOTE: config.py stores crypto symbols as 'BTCUSD' (legacy no-slash
+    # format for Alpaca trading compatibility). Binance data endpoint needs
+    # the slash format with USDT quote: 'BTC/USDT'. Same conversion logic
+    # market_scanner.py uses, adapted for the config's symbol format.
     for name, symbol in crypto_assets.items():
         print(f"  {name}...", end=" ", flush=True)
-        # Alpaca's trading endpoints (orders, positions) require the no-slash
-        # format ('BTCUSD', as stored in config.py), but the market-data
-        # endpoint (get_crypto_bars) requires the slash format ('BTC/USD') --
-        # confirmed the hard way via a live "invalid symbol" error. Assumes a
-        # 3-letter quote currency (USD), true for everything in this config.
-        data_symbol = symbol[:-3] + '/' + symbol[-3:]
-        try:
-            # NOTE: limit= alone was unreliable and returned only a single
-            # (today's) bar regardless of the requested limit -- an explicit
-            # start/end range is required for a real historical pull.
-            bars = api.get_crypto_bars(
-                data_symbol, TimeFrame.Day,
-                start=start.strftime('%Y-%m-%d'), end=end.strftime('%Y-%m-%d')
-            ).df
-            if bars.empty:
-                raise ValueError("Empty data returned")
-            if 'symbol' in bars.columns:
-                bars = bars[bars['symbol'] == data_symbol]
+        # Convert 'BTCUSD' -> 'BTC/USDT' for Binance
+        base = symbol.replace('USD', '')
+        pair = f"{base}/USDT"
 
-            df = bars[['close']].reset_index().rename(columns={'timestamp': 'Date', 'close': name})
-            df['Date'] = pd.to_datetime(df['Date']).dt.date
+        try:
+            # Fetch ~2 years of daily bars (limit 1000 per call)
+            ohlcv = exchange.fetch_ohlcv(pair, timeframe='1d', limit=1000)
+            if not ohlcv:
+                raise ValueError("Empty data returned")
+
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['Date'] = pd.to_datetime(df['timestamp'], unit='ms').dt.date
+            df = df[['Date', 'close']].rename(columns={'close': name})
             df = df.drop_duplicates('Date')
             dfs.append(df)
             print(f"OK ({len(df)} rows)")
         except Exception as e:
             print(f"FAILED: {e}")
-            print(f"NOTE: crypto data via Alpaca is new in this bot -- if this keeps failing, "
-                  f"check the exact column/response shape your installed alpaca-trade-api version "
-                  f"returns from get_crypto_bars() and adjust accordingly.")
+            print(f"NOTE: Check that '{pair}' is valid on Binance.")
             exit(1)
 
 # NOTE: this inner join restricts the combined dataset to dates present in
